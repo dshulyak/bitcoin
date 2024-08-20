@@ -54,6 +54,7 @@ static RPCHelpMan sendrawtransaction()
              "Reject transactions with provably unspendable outputs (e.g. 'datacarrier' outputs that use the OP_RETURN opcode) greater than the specified value, expressed in " + CURRENCY_UNIT + ".\n"
              "If burning funds through unspendable outputs is desired, increase this value.\n"
              "This check is based on heuristics and does not guarantee spendability of outputs.\n"},
+            {"relay", RPCArg::Type::BOOL, RPCArg::Default{true}, "Whether to relay the transaction to the network (default: true)"},
         },
         RPCResult{
             RPCResult::Type::STR_HEX, "", "The transaction hash in hex"
@@ -93,7 +94,10 @@ static RPCHelpMan sendrawtransaction()
             std::string err_string;
             AssertLockNotHeld(cs_main);
             NodeContext& node = EnsureAnyNodeContext(request.context);
-            const TransactionError err = BroadcastTransaction(node, tx, err_string, max_raw_tx_fee, /*relay=*/true, /*wait_callback=*/true);
+            bool relay = false;
+            if (!request.params[2].isNull())
+                relay = request.params[2].get_bool();
+            const TransactionError err = BroadcastTransaction(node, tx, err_string, max_raw_tx_fee, relay, /*wait_callback=*/true);
             if (TransactionError::OK != err) {
                 throw JSONRPCTransactionError(err, err_string);
             }
