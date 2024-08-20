@@ -222,6 +222,7 @@ struct RemovedMempoolTransactionInfo {
 
 struct NewMempoolTransactionInfo {
     TransactionInfo info;
+    const int64_t sig_ops;
     /*
      * This boolean indicates whether the transaction was added
      * without enforcing mempool fee limits.
@@ -238,11 +239,12 @@ struct NewMempoolTransactionInfo {
     const bool m_has_no_mempool_parents;
 
     explicit NewMempoolTransactionInfo(const CTransactionRef& tx, const CAmount& fee,
-                                       const int64_t vsize, const unsigned int height,
+                                       const int64_t vsize, const int64_t sig_ops, const unsigned int height,
                                        const bool mempool_limit_bypassed, const bool submitted_in_package,
                                        const bool chainstate_is_current,
                                        const bool has_no_mempool_parents)
         : info{tx, fee, vsize, height},
+          sig_ops{sig_ops},
           m_mempool_limit_bypassed{mempool_limit_bypassed},
           m_submitted_in_package{submitted_in_package},
           m_chainstate_is_current{chainstate_is_current},

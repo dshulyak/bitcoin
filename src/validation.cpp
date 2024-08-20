@@ -651,6 +651,7 @@ private:
         /** Virtual size of the transaction as used by the mempool, calculated using serialized size
          * of the transaction and sigops. */
         int64_t m_vsize;
+        int64_t sig_ops;
         /** Fees paid by this transaction: total input amounts subtracted by total output amounts. */
         CAmount m_base_fees;
         /** Base fees + any fee delta set by the user with prioritisetransaction. */
@@ -940,6 +941,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     entry.reset(new CTxMemPoolEntry(ptx, ws.m_base_fees, nAcceptTime, m_active_chainstate.m_chain.Height(), entry_sequence,
                                     fSpendsCoinbase, nSigOpsCost, lock_points.value()));
     ws.m_vsize = entry->GetTxSize();
+    ws.sig_ops = nSigOpsCost;
 
     if (nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST)
         return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "bad-txns-too-many-sigops",
@@ -1430,7 +1432,7 @@ bool MemPoolAccept::SubmitPackage(const ATMPArgs& args, std::vector<Workspace>& 
         if (!m_pool.m_opts.signals) continue;
         const CTransaction& tx = *ws.m_ptx;
         const auto tx_info = NewMempoolTransactionInfo(ws.m_ptx, ws.m_base_fees,
-                                                       ws.m_vsize, ws.m_entry->GetHeight(),
+                                                       ws.m_vsize, ws.sig_ops, ws.m_entry->GetHeight(),
                                                        args.m_bypass_limits, args.m_package_submission,
                                                        IsCurrentForFeeEstimation(m_active_chainstate),
                                                        m_pool.HasNoInputsOf(tx));
@@ -1492,7 +1494,7 @@ MempoolAcceptResult MemPoolAccept::AcceptSingleTransaction(const CTransactionRef
     if (m_pool.m_opts.signals) {
         const CTransaction& tx = *ws.m_ptx;
         const auto tx_info = NewMempoolTransactionInfo(ws.m_ptx, ws.m_base_fees,
-                                                       ws.m_vsize, ws.m_entry->GetHeight(),
+                                                       ws.m_vsize, ws.sig_ops, ws.m_entry->GetHeight(),
                                                        args.m_bypass_limits, args.m_package_submission,
                                                        IsCurrentForFeeEstimation(m_active_chainstate),
                                                        m_pool.HasNoInputsOf(tx));
