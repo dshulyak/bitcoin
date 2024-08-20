@@ -149,3 +149,7 @@ dist/
 /guix-build-*
 
 /ci/scratch/
+
+
+# editor 
+.vscode/
