@@ -284,6 +284,7 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
     AssertLockHeld(pool.cs);
 
     info.pushKV("vsize", (int)e.GetTxSize());
+    info.pushKV("sigops", (int)e.GetSigOpCost());
     info.pushKV("weight", (int)e.GetTxWeight());
     info.pushKV("time", count_seconds(e.GetTime()));
     info.pushKV("height", (int)e.GetHeight());
