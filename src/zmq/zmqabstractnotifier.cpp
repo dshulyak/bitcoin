@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <consensus/amount.h>
 #include <zmq/zmqabstractnotifier.h>
 
 #include <cassert>
@@ -19,6 +20,11 @@ bool CZMQAbstractNotifier::NotifyBlock(const CBlockIndex * /*CBlockIndex*/)
 }
 
 bool CZMQAbstractNotifier::NotifyTransaction(const CTransaction &/*transaction*/)
+{
+    return true;
+}
+
+bool CZMQAbstractNotifier::NotifyMempoolTransaction(const CTransaction &/*transaction*/, const CAmount /*fee*/, int64_t /*vsize*/, int64_t /*sig_ops*/, int32_t /*weight*/)
 {
     return true;
 }

@@ -48,7 +48,7 @@ std::unique_ptr<CZMQNotificationInterface> CZMQNotificationInterface::Create(std
     factories["pubrawblock"] = [&get_block_by_index]() -> std::unique_ptr<CZMQAbstractNotifier> {
         return std::make_unique<CZMQPublishRawBlockNotifier>(get_block_by_index);
     };
-    factories["pubrawtx"] = CZMQAbstractNotifier::Create<CZMQPublishRawTransactionNotifier>;
+    factories["pubrawtx"] = CZMQAbstractNotifier::Create<CZMQPublishMempoolTransactionNotifier>;
     factories["pubsequence"] = CZMQAbstractNotifier::Create<CZMQPublishSequenceNotifier>;
 
     std::list<std::unique_ptr<CZMQAbstractNotifier>> notifiers;
@@ -160,9 +160,13 @@ void CZMQNotificationInterface::UpdatedBlockTip(const CBlockIndex *pindexNew, co
 void CZMQNotificationInterface::TransactionAddedToMempool(const NewMempoolTransactionInfo& ptx, uint64_t mempool_sequence)
 {
     const CTransaction& tx = *(ptx.info.m_tx);
-
-    TryForEachAndRemoveFailed(notifiers, [&tx, mempool_sequence](CZMQAbstractNotifier* notifier) {
-        return notifier->NotifyTransaction(tx) && notifier->NotifyTransactionAcceptance(tx, mempool_sequence);
+    const int64_t fee = ptx.info.m_fee;
+    const int64_t vsize = ptx.info.m_virtual_transaction_size;
+    const int64_t sig_ops = ptx.sig_ops;
+    const int32_t weight = ptx.weight;
+    TryForEachAndRemoveFailed(notifiers, [&tx, mempool_sequence, fee, vsize, sig_ops, weight](CZMQAbstractNotifier* notifier) {
+        return notifier->NotifyMempoolTransaction(tx, fee, vsize, sig_ops, weight) 
+            && notifier->NotifyTransactionAcceptance(tx, mempool_sequence);
     });
 }
 
