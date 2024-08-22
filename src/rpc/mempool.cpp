@@ -306,6 +306,7 @@ static void entryToJSON(const CTxMemPool& pool, UniValue& info, const CTxMemPool
     info.pushKV("fees", std::move(fees));
 
     const CTransaction& tx = e.GetTx();
+    info.pushKV("hex", EncodeHexTx(tx));
     std::set<std::string> setDepends;
     for (const CTxIn& txin : tx.vin)
     {
