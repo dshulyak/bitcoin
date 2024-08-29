@@ -3983,7 +3983,7 @@ static bool CheckWitnessMalleation(const CBlock& block, bool expect_witness_comm
                 return state.Invalid(
                     /*result=*/BlockValidationResult::BLOCK_MUTATED,
                     /*reject_reason=*/"bad-witness-merkle-match",
-                    /*debug_message=*/strprintf("%s : witness merkle commitment mismatch", __func__));
+                    /*debug_message=*/strprintf("%s : witness merkle commitment mismatch. %x %x", __func__, hash_witness.data(), block.vtx[0]->vout[commitpos].scriptPubKey.data()));
             }
 
             block.m_checked_witness_commitment = true;
@@ -4164,7 +4164,7 @@ arith_uint256 CalculateClaimedHeadersWork(const std::vector<CBlockHeader>& heade
  *  in ConnectBlock().
  *  Note that -reindex-chainstate skips the validation that happens here!
  */
-static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, BlockManager& blockman, const ChainstateManager& chainman, const CBlockIndex* pindexPrev) EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
+static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidationState& state, BlockManager& blockman, const ChainstateManager& chainman, const CBlockIndex* pindexPrev, bool fCheckPoW) EXCLUSIVE_LOCKS_REQUIRED(::cs_main)
 {
     AssertLockHeld(::cs_main);
     assert(pindexPrev != nullptr);
@@ -4172,7 +4172,8 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
 
     // Check proof of work
     const Consensus::Params& consensusParams = chainman.GetConsensus();
-    if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+
+    if (fCheckPoW && (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams)))
         return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "bad-diffbits", "incorrect proof of work");
 
     // Check against checkpoints
@@ -4253,7 +4254,11 @@ static bool ContextualCheckBlock(const CBlock& block, BlockValidationState& stat
         CScript expect = CScript() << nHeight;
         if (block.vtx[0]->vin[0].scriptSig.size() < expect.size() ||
             !std::equal(expect.begin(), expect.end(), block.vtx[0]->vin[0].scriptSig.begin())) {
-            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-height", "block height mismatch in coinbase");
+            return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-height", 
+            
+                strprintf("block height %d mismatch in coinbase. input size %d, expect size %d. %v %v", nHeight,
+                    block.vtx[0]->vin[0].scriptSig.size(),
+                    expect.size(), expect.data(), block.vtx[0]->vin[0].scriptSig.data()));
         }
     }
 
@@ -4319,7 +4324,7 @@ bool ChainstateManager::AcceptBlockHeader(const CBlockHeader& block, BlockValida
             LogPrint(BCLog::VALIDATION, "header %s has prev block invalid: %s\n", hash.ToString(), block.hashPrevBlock.ToString());
             return state.Invalid(BlockValidationResult::BLOCK_INVALID_PREV, "bad-prevblk");
         }
-        if (!ContextualCheckBlockHeader(block, state, m_blockman, *this, pindexPrev)) {
+        if (!ContextualCheckBlockHeader(block, state, m_blockman, *this, pindexPrev, true)) {
             LogPrint(BCLog::VALIDATION, "%s: Consensus::ContextualCheckBlockHeader: %s, %s\n", __func__, hash.ToString(), state.ToString());
             return false;
         }
@@ -4632,7 +4637,7 @@ bool TestBlockValidity(BlockValidationState& state,
     indexDummy.phashBlock = &block_hash;
 
     // NOTE: CheckBlockHeader is called by CheckBlock
-    if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, pindexPrev)) {
+    if (!ContextualCheckBlockHeader(block, state, chainstate.m_blockman, chainstate.m_chainman, pindexPrev, fCheckPOW)) {
         LogError("%s: Consensus::ContextualCheckBlockHeader: %s\n", __func__, state.ToString());
         return false;
     }
